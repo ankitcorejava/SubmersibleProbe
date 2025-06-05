@@ -1,85 +1,153 @@
 package com.submersible.probe.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.when;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Optional;
 
-import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.submersible.probe.entity.Command;
 import com.submersible.probe.entity.CommandType;
 import com.submersible.probe.entity.Direction;
 import com.submersible.probe.entity.Grid;
 import com.submersible.probe.entity.Obstacle;
 import com.submersible.probe.entity.Probe;
+import com.submersible.probe.entity.VisitedCoordinate;
 import com.submersible.probe.repository.CommandRepository;
 import com.submersible.probe.repository.GridRepository;
 import com.submersible.probe.repository.ObstacleRepository;
 import com.submersible.probe.repository.ProbeRepository;
 import com.submersible.probe.repository.VisitedCoordinateRepository;
 
-@ExtendWith(value = { MockitoExtension.class })
+@ExtendWith(MockitoExtension.class)
 class ProbeServiceTest {
 
-	@InjectMocks
-	private ProbeService probeService;
+    @InjectMocks
+    private ProbeService probeService;
 
-	@Mock
-	private ProbeRepository probeRepository;
-	@Mock
-	private GridRepository gridRepository;
-	@Mock
-	private ObstacleRepository obstacleRepository;
-	@Mock
-	private VisitedCoordinateRepository visitedCoordinateRepository;
-	@Mock
-	private CommandRepository commandRepository;
+    @Mock
+    private ProbeRepository probeRepository;
+    @Mock
+    private GridRepository gridRepository;
+    @Mock
+    private ObstacleRepository obstacleRepository;
+    @Mock
+    private VisitedCoordinateRepository visitedCoordinateRepository;
+    @Mock
+    private CommandRepository commandRepository;
 
-	@Test
-	void testForwardMovementWithoutObstacles() {
-		Grid grid = new Grid(1L, 5, 5, "Test Grid");
-		Probe probe = new Probe(1L, "TestProbe", 2, 2, Direction.NORTH, grid);
+    private Grid grid;
+    private Probe probe;
 
-		Mockito.when(probeRepository.findById(1L)).thenReturn(Optional.of(probe));
-		Mockito.when(obstacleRepository.findByGridId(1L)).thenReturn(Collections.emptyList());
-		Mockito.when(probeRepository.save(Mockito.any())).thenAnswer(i -> i.getArgument(0));
+    @BeforeEach
+    void init() {
+        grid = new Grid(1L, 5, 5, "Test Grid");
+        probe = new Probe(1L, "TestProbe", 2, 2, Direction.NORTH, grid);
 
-		Probe result = probeService.moveProbe(1L, Arrays.asList(CommandType.FORWARD));
+        lenient().when(commandRepository.save(any())).thenReturn(new Command());
+        lenient().when(visitedCoordinateRepository.save(any())).thenReturn(new VisitedCoordinate());
+        lenient().when(probeRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+    }
 
-		Assertions.assertEquals(2, result.getX());
-		Assertions.assertEquals(3, result.getY());
-	}
+    @Test
+    void testForwardMovementWithoutObstacles() {
+        when(probeRepository.findById(1L)).thenReturn(Optional.of(probe));
+        when(obstacleRepository.findByGridId(1L)).thenReturn(Collections.emptyList());
 
-	@Test
-	void testMovementBlockedByObstacle() {
-		Grid grid = new Grid(1L, 5, 5, "Obstacle Grid");
-		Probe probe = new Probe(1L, "BlockedProbe", 1, 1, Direction.EAST, grid);
-		Obstacle obstacle = new Obstacle(1L, 2, 1, grid);
+        Probe result = probeService.moveProbe(1L, Arrays.asList(CommandType.FORWARD));
 
-		Mockito.when(probeRepository.findById(1L)).thenReturn(Optional.of(probe));
-		Mockito.when(obstacleRepository.findByGridId(1L)).thenReturn(Collections.singletonList(obstacle));
+        assertNotNull(result);
+        assertEquals(2, result.getX());
+        assertEquals(3, result.getY());
+    }
 
-		Probe result = probeService.moveProbe(1L, Arrays.asList(CommandType.FORWARD));
+    @Test
+    void testMovementBlockedByObstacle() {
+        probe.setX(1);
+        probe.setY(1);
+        probe.setDirection(Direction.EAST);
 
-		Assertions.assertEquals(1, result.getX());
-		Assertions.assertEquals(1, result.getY()); // Should not move
-	}
+        Obstacle obstacle = new Obstacle(1L, 2, 1, grid);
+        when(probeRepository.findById(1L)).thenReturn(Optional.of(probe));
+        when(obstacleRepository.findByGridId(1L)).thenReturn(Collections.singletonList(obstacle));
 
-	@Test
-	void testTurnLeft() {
-		Grid grid = new Grid(1L, 5, 5, "Turn Grid");
-		Probe probe = new Probe(1L, "TurningProbe", 0, 0, Direction.NORTH, grid);
+        Probe result = probeService.moveProbe(1L, Arrays.asList(CommandType.FORWARD));
 
-		Mockito.when(probeRepository.findById(1L)).thenReturn(Optional.of(probe));
-		Mockito.when(obstacleRepository.findByGridId(1L)).thenReturn(Collections.emptyList());
+        assertNotNull(result);
+        assertEquals(1, result.getX());
+        assertEquals(1, result.getY());
+    }
 
-		Probe result = probeService.moveProbe(1L, Arrays.asList(CommandType.LEFT));
+    @Test
+    void testTurnLeft() {
+        probe.setX(0);
+        probe.setY(0);
+        probe.setDirection(Direction.NORTH);
 
-		Assertions.assertEquals(Direction.WEST, result.getDirection());
-	}
+        when(probeRepository.findById(1L)).thenReturn(Optional.of(probe));
+        when(obstacleRepository.findByGridId(1L)).thenReturn(Collections.emptyList());
+
+        Probe result = probeService.moveProbe(1L, Arrays.asList(CommandType.LEFT));
+
+        assertNotNull(result);
+        assertEquals(Direction.WEST, result.getDirection());
+    }
+
+    @Test
+    void testBackwardMovement() {
+        probe.setX(2);
+        probe.setY(2);
+        probe.setDirection(Direction.NORTH);
+
+        when(probeRepository.findById(1L)).thenReturn(Optional.of(probe));
+        when(obstacleRepository.findByGridId(1L)).thenReturn(Collections.emptyList());
+
+        Probe result = probeService.moveProbe(1L, Arrays.asList(CommandType.BACKWARD));
+
+        assertNotNull(result);
+        assertEquals(2, result.getX());
+        assertEquals(1, result.getY());
+    }
+
+    @Test
+    void testOutOfBoundsIgnored() {
+        probe.setX(0);
+        probe.setY(0);
+        probe.setDirection(Direction.SOUTH);
+
+        when(probeRepository.findById(1L)).thenReturn(Optional.of(probe));
+        when(obstacleRepository.findByGridId(1L)).thenReturn(Collections.emptyList());
+
+        Probe result = probeService.moveProbe(1L, Arrays.asList(CommandType.FORWARD));
+
+        assertNotNull(result);
+        assertEquals(0, result.getX());
+        assertEquals(0, result.getY());
+    }
+
+    @Test
+    void testRightTurn() {
+        probe.setX(1);
+        probe.setY(1);
+        probe.setDirection(Direction.NORTH);
+
+        when(probeRepository.findById(1L)).thenReturn(Optional.of(probe));
+        when(obstacleRepository.findByGridId(1L)).thenReturn(Collections.emptyList());
+
+        Probe result = probeService.moveProbe(1L, Arrays.asList(CommandType.RIGHT));
+
+        assertNotNull(result);
+        assertEquals(Direction.EAST, result.getDirection());
+    }
 }
