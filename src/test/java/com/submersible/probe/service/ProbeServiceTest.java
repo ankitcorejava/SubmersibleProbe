@@ -10,6 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.submersible.probe.entity.CommandType;
 import com.submersible.probe.entity.Direction;
@@ -22,7 +23,7 @@ import com.submersible.probe.repository.ObstacleRepository;
 import com.submersible.probe.repository.ProbeRepository;
 import com.submersible.probe.repository.VisitedCoordinateRepository;
 
-
+@ExtendWith(value = { MockitoExtension.class })
 class ProbeServiceTest {
 
 	@InjectMocks
